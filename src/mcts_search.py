@@ -1,0 +1,118 @@
+"""Monte Carlo Tree Search implementation.
+
+This module provides a lightweight MCTS algorithm that consults the neural
+network evaluator for leaf evaluation. It supports a configurable number of
+iterations and applies a humanity adjustment so the engine can mimic more
+human-like play when desired.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Dict, Optional
+
+import chess
+import torch
+
+from .nn_evaluator import NNEvaluator
+if TYPE_CHECKING:
+    from .core_engine import EngineConfig
+
+
+@dataclass
+class Node:
+    """Tree node used by the MCTS algorithm."""
+
+    board: chess.Board
+    parent: Optional["Node"] = None
+    children: Dict[chess.Move, "Node"] = field(default_factory=dict)
+    visits: int = 0
+    value: float = 0.0
+
+
+class MCTSSearch:
+    """Monte Carlo Tree Search using the evaluator for rollouts."""
+
+    def __init__(self, evaluator: NNEvaluator) -> None:
+        self.evaluator = evaluator
+
+    def reset(self) -> None:  # pragma: no cover - placeholder
+        """Reset search state if needed."""
+
+    def best_move(self, fen: str, config: "EngineConfig") -> str:
+        """Return the best move for the position using MCTS."""
+        moves = self.best_moves(fen, config, n=1)
+        return moves[0][0] if moves else "0000"
+
+    def best_moves(
+        self, fen: str, config: "EngineConfig", n: int = 3
+    ) -> list[tuple[str, float]]:
+        """Return top-N moves with average evaluation."""
+        root = Node(board=chess.Board(fen))
+
+        for _ in range(config.mcts_iterations):
+            node = self._select(root)
+            value = self._simulate(node.board, config)
+            self._backpropagate(node, value)
+
+        moves_scores: list[tuple[str, float]] = []
+        for move, child in root.children.items():
+            if child.visits == 0:
+                continue
+            score = child.value / child.visits
+            moves_scores.append((move.uci(), score))
+
+        moves_scores.sort(key=lambda item: item[1], reverse=True)
+        return moves_scores[:n]
+
+    def _select(self, node: Node) -> Node:
+        from math import log, sqrt
+
+        while node.children and not node.board.is_game_over():
+            total = node.visits
+            node = max(
+                node.children.values(),
+                key=lambda child: self._ucb(child, total),
+            )
+        if node.visits == 0 or node.board.is_game_over():
+            return node
+        return self._expand(node)
+
+    def _expand(self, node: Node) -> Node:
+        for move in node.board.legal_moves:
+            if move not in node.children:
+                board = node.board.copy()
+                board.push(move)
+                child = Node(board=board, parent=node)
+                node.children[move] = child
+                return child
+        # Should not reach here if called correctly
+        return node
+
+    def _simulate(self, board: chess.Board, config: "EngineConfig") -> float:
+        score = self.evaluator.evaluate(board)
+        score = self.adjust_for_humanity(score, config.humanity)
+        return score if board.turn == chess.WHITE else -score
+
+    def _backpropagate(self, node: Node, value: float) -> None:
+        while node is not None:
+            node.visits += 1
+            node.value += value
+            node = node.parent
+            value = -value
+
+    @staticmethod
+    def _ucb(child: Node, total_visits: int) -> float:
+        from math import log, sqrt
+
+        if child.visits == 0:
+            return float("inf")
+        c = 1.4
+        return child.value / child.visits + c * sqrt(log(total_visits) / child.visits)
+
+    @staticmethod
+    def adjust_for_humanity(score: float, humanity: int) -> float:
+        """Apply a penalty to mimic human-like play."""
+        factor = 1.0 - humanity / 20.0
+        return score * factor
