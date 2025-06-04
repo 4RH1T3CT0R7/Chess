@@ -7,7 +7,11 @@ GUI-based sessions.
 from __future__ import annotations
 
 from dataclasses import dataclass
+
 from typing import Optional
+
+from typing import Optional, Tuple
+
 
 import chess
 import torch
@@ -34,6 +38,7 @@ class AlphaBetaSearch:
                 best_move = move
         return best_move.uci() if best_move else "0000"
 
+
     def best_moves(
         self, board: chess.Board, depth: int, config: "EngineConfig", n: int = 3
     ) -> list[tuple[str, float]]:
@@ -46,6 +51,7 @@ class AlphaBetaSearch:
             scores.append((move.uci(), val))
         scores.sort(key=lambda item: item[1], reverse=True)
         return scores[:n]
+
 
     def _search(self, board: chess.Board, depth: int, alpha: float, beta: float, color: int, config: "EngineConfig") -> float:
         if depth == 0 or board.is_game_over():
@@ -62,12 +68,37 @@ class AlphaBetaSearch:
 
     def _evaluate(self, board: chess.Board, config: "EngineConfig") -> float:
         score = self.evaluator.evaluate(board)
+
+        tensor = self._board_to_tensor(board)
+        score = self.evaluator.evaluate(tensor)
+
         return self._adjust_for_humanity(score, config.humanity)
 
     @staticmethod
     def _adjust_for_humanity(score: float, humanity: int) -> float:
         factor = 1.0 - humanity / 20.0
         return score * factor
+
+
+    @staticmethod
+    def _board_to_tensor(board: chess.Board) -> torch.Tensor:
+        planes = torch.zeros((13, 8, 8), dtype=torch.float32)
+        piece_map = {
+            chess.PAWN: 0,
+            chess.KNIGHT: 1,
+            chess.BISHOP: 2,
+            chess.ROOK: 3,
+            chess.QUEEN: 4,
+            chess.KING: 5,
+        }
+        for square, piece in board.piece_map().items():
+            idx = piece_map[piece.piece_type] + (0 if piece.color == chess.WHITE else 6)
+            row = chess.square_rank(square)
+            col = chess.square_file(square)
+            planes[idx, row, col] = 1.0
+        planes[12].fill_(1.0 if board.turn == chess.WHITE else 0.0)
+        return planes.unsqueeze(0)
+
 
 
 @dataclass
@@ -112,6 +143,7 @@ class ChessEngine:
             return self.mcts.best_move(fen, self.config)
         board = chess.Board(fen)
         return self.alpha_beta.best_move(board, self.config.max_depth, self.config)
+
 
     def suggest_moves(self, fen: str, n: int = 3) -> list[tuple[str, float]]:
         """Return top-N moves with evaluation scores."""

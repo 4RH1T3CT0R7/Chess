@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+
 from typing import List
 
 import PySimpleGUI as sg
 import chess
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+
+import PySimpleGUI as sg
+import chess
+
 
 from .core_engine import create_default_engine
 
@@ -17,6 +22,7 @@ class ChessGUI:
 
     def __init__(self) -> None:
         self.engine = create_default_engine()
+
         self.history: List[float] = []
         self.fig = Figure(figsize=(4, 2))
         self.ax = self.fig.add_subplot(111)
@@ -36,6 +42,14 @@ class ChessGUI:
         self.canvas = FigureCanvasTkAgg(self.fig, self.window["CANVAS"].TKCanvas)
         self.canvas.draw()
 
+        self.layout = [
+            [sg.Text("Humanity"), sg.Slider(range=(0, 10), default_value=5, orientation="h", key="HUMANITY")],
+            [sg.Button("Suggest Move", key="SUGGEST")],
+            [sg.Multiline(size=(40, 10), key="FEN")],
+            [sg.Text("Suggested"), sg.Text(size=(10, 1), key="OUTPUT")],
+        ]
+        self.window = sg.Window("Chess Assistant", self.layout)
+
     def run(self) -> None:
         while True:
             event, values = self.window.read()
@@ -49,6 +63,7 @@ class ChessGUI:
                     self.window["OUTPUT"].update("Invalid FEN")
                     continue
                 self.engine.config.humanity = int(values["HUMANITY"])
+
 
                 mode = values["MODE"]
                 if mode == "Blitz":
@@ -75,6 +90,11 @@ class ChessGUI:
         self.ax.set_ylabel("Eval")
         self.ax.plot(self.history, marker="o")
         self.canvas.draw()
+
+
+                move = self.engine.suggest_move(fen)
+                self.window["OUTPUT"].update(move)
+        self.window.close()
 
 
 def main() -> None:
