@@ -54,28 +54,7 @@ class MCTSSearch:
         for _ in range(config.mcts_iterations):
             node = self._select(root)
             value = self._simulate(node.board, config)
-            self._backpropagate(node, value)
-
-        if not root.children:
-            return "0000"
-        best_child = max(root.children.items(), key=lambda item: item[1].visits)[0]
-        return best_child.uci()
-
-    def _select(self, node: Node) -> Node:
-        from math import log, sqrt
-
-        while node.children and not node.board.is_game_over():
-            total = node.visits
-            node = max(
-                node.children.values(),
-                key=lambda child: self._ucb(child, total),
-            )
-        if node.visits == 0 or node.board.is_game_over():
-            return node
-        return self._expand(node)
-
-    def _expand(self, node: Node) -> Node:
-        for move in node.board.legal_moves:
+        score = self.evaluator.evaluate(board)
             if move not in node.children:
                 board = node.board.copy()
                 board.push(move)

@@ -5,7 +5,7 @@ assistant designed for research into human–AI interaction. It consists of
 four core modules located in `src/`:
 
 - `core_engine.py` – engine manager and factory
-- `nn_evaluator.py` – minimal PyTorch evaluator
+- `nn_evaluator.py` – residual CNN evaluator
 - `mcts_search.py` – MCTS search with optional "humanity" factor
 - `gui_app.py` – cross-platform GUI using PySimpleGUI
 
