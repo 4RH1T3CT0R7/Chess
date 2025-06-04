@@ -26,11 +26,6 @@ if TYPE_CHECKING:
 class Node:
     """Tree node used by the MCTS algorithm."""
 
-=======
-=======
-    """Basic tree node for MCTS."""
-
-
     board: chess.Board
     parent: Optional["Node"] = None
     children: Dict[chess.Move, "Node"] = field(default_factory=dict)
@@ -49,6 +44,15 @@ class MCTSSearch:
 
     def best_move(self, fen: str, config: "EngineConfig") -> str:
         """Return the best move for the position using MCTS."""
+
+        moves = self.best_moves(fen, config, n=1)
+        return moves[0][0] if moves else "0000"
+
+    def best_moves(
+        self, fen: str, config: "EngineConfig", n: int = 3
+    ) -> list[tuple[str, float]]:
+        """Return top-N moves with average evaluation."""
+
         root = Node(board=chess.Board(fen))
 
         for _ in range(config.mcts_iterations):
@@ -56,10 +60,21 @@ class MCTSSearch:
             value = self._simulate(node.board, config)
             self._backpropagate(node, value)
 
+        moves_scores: list[tuple[str, float]] = []
+        for move, child in root.children.items():
+            if child.visits == 0:
+                continue
+            score = child.value / child.visits
+            moves_scores.append((move.uci(), score))
+
+        moves_scores.sort(key=lambda item: item[1], reverse=True)
+        return moves_scores[:n]
+
         if not root.children:
             return "0000"
         best_child = max(root.children.items(), key=lambda item: item[1].visits)[0]
         return best_child.uci()
+
 
     def _select(self, node: Node) -> Node:
         from math import log, sqrt
@@ -88,7 +103,8 @@ class MCTSSearch:
     def _simulate(self, board: chess.Board, config: "EngineConfig") -> float:
 
         score = self.evaluator.evaluate(board)
-=======
+
+        score = self.evaluator.evaluate(board)
         tensor = self.board_to_tensor(board)
         score = self.evaluator.evaluate(tensor)
 
@@ -111,7 +127,7 @@ class MCTSSearch:
         c = 1.4
         return child.value / child.visits + c * sqrt(log(total_visits) / child.visits)
 
-=======
+
         """Return the best move string for given position."""
         board = chess.Board(fen)
         best_move: Optional[chess.Move] = None

@@ -12,8 +12,6 @@ to keep inference fast on consumer GPUs such as the RTX 3070.  Despite its
 size it includes residual connections and global average pooling which are
 common in modern chess engines.
 """
-=======
-"""Neural network evaluator for chess positions."""
 
 
 from __future__ import annotations
@@ -64,7 +62,7 @@ class ConvEvaluator(nn.Module):
     def forward(self, x: Tensor) -> Tensor:  # type: ignore[override]
         out = self.features(x)
         return self.head(out)
-=======
+
 
 
 class SimpleEvaluator(nn.Module):
@@ -81,6 +79,7 @@ class SimpleEvaluator(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
         return self.model(x)
+
 
 
 class NNEvaluator:
@@ -114,7 +113,7 @@ class NNEvaluator:
         """Return a scalar evaluation for the given board tensor or board."""
         if isinstance(board_tensor, chess.Board):
             board_tensor = self.board_to_tensor(board_tensor)
-=======
+
         self.model = SimpleEvaluator().to(self.device)
 
     def evaluate(self, board_tensor: torch.Tensor) -> float:
@@ -131,7 +130,6 @@ class NNEvaluator:
     def save(self, path: str) -> None:
         """Save model weights."""
         torch.save(self.model.state_dict(), path)
-
 
     def export_onnx(self, path: str) -> None:
         """Export the model to ONNX format."""
