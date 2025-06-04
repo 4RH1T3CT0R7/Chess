@@ -1,3 +1,4 @@
+
 """Monte Carlo Tree Search implementation.
 
 This module provides a lightweight MCTS algorithm that consults the neural
@@ -5,6 +6,8 @@ network evaluator for leaf evaluation. It supports a configurable number of
 iterations and applies a humanity adjustment so the engine can mimic more
 human-like play when desired.
 """
+=======
+"""Monte Carlo Tree Search implementation (simplified)."""
 
 from __future__ import annotations
 
@@ -23,6 +26,8 @@ if TYPE_CHECKING:
 @dataclass
 class Node:
     """Tree node used by the MCTS algorithm."""
+=======
+    """Basic tree node for MCTS."""
 
     board: chess.Board
     parent: Optional["Node"] = None
@@ -33,6 +38,8 @@ class Node:
 
 class MCTSSearch:
     """Monte Carlo Tree Search using the evaluator for rollouts."""
+=======
+    """Simplified MCTS wrapper that calls the evaluator."""
 
     def __init__(self, evaluator: NNEvaluator) -> None:
         self.evaluator = evaluator
@@ -99,6 +106,20 @@ class MCTSSearch:
             return float("inf")
         c = 1.4
         return child.value / child.visits + c * sqrt(log(total_visits) / child.visits)
+        """Return the best move string for given position."""
+        board = chess.Board(fen)
+        best_move: Optional[chess.Move] = None
+        best_score = float("-inf")
+        for move in board.legal_moves:
+            board.push(move)
+            tensor = self.board_to_tensor(board)
+            score = self.evaluator.evaluate(tensor)
+            score = self.adjust_for_humanity(score, config.humanity)
+            if score > best_score:
+                best_score = score
+                best_move = move
+            board.pop()
+        return best_move.uci() if best_move else "0000"
 
     @staticmethod
     def board_to_tensor(board: chess.Board) -> torch.Tensor:
