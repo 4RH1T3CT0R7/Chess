@@ -48,6 +48,8 @@ class AlphaBetaSearch:
         return alpha
 
     def _evaluate(self, board: chess.Board, config: "EngineConfig") -> float:
+        score = self.evaluator.evaluate(board)
+=======
         tensor = self._board_to_tensor(board)
         score = self.evaluator.evaluate(tensor)
         return self._adjust_for_humanity(score, config.humanity)
@@ -57,6 +59,7 @@ class AlphaBetaSearch:
         factor = 1.0 - humanity / 20.0
         return score * factor
 
+=======
     @staticmethod
     def _board_to_tensor(board: chess.Board) -> torch.Tensor:
         planes = torch.zeros((13, 8, 8), dtype=torch.float32)

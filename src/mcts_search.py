@@ -6,8 +6,7 @@ network evaluator for leaf evaluation. It supports a configurable number of
 iterations and applies a humanity adjustment so the engine can mimic more
 human-like play when desired.
 """
-=======
-"""Monte Carlo Tree Search implementation (simplified)."""
+
 
 from __future__ import annotations
 
@@ -26,8 +25,11 @@ if TYPE_CHECKING:
 @dataclass
 class Node:
     """Tree node used by the MCTS algorithm."""
+
+=======
 =======
     """Basic tree node for MCTS."""
+
 
     board: chess.Board
     parent: Optional["Node"] = None
@@ -38,8 +40,6 @@ class Node:
 
 class MCTSSearch:
     """Monte Carlo Tree Search using the evaluator for rollouts."""
-=======
-    """Simplified MCTS wrapper that calls the evaluator."""
 
     def __init__(self, evaluator: NNEvaluator) -> None:
         self.evaluator = evaluator
@@ -86,8 +86,12 @@ class MCTSSearch:
         return node
 
     def _simulate(self, board: chess.Board, config: "EngineConfig") -> float:
+
+        score = self.evaluator.evaluate(board)
+=======
         tensor = self.board_to_tensor(board)
         score = self.evaluator.evaluate(tensor)
+
         score = self.adjust_for_humanity(score, config.humanity)
         return score if board.turn == chess.WHITE else -score
 
@@ -106,6 +110,8 @@ class MCTSSearch:
             return float("inf")
         c = 1.4
         return child.value / child.visits + c * sqrt(log(total_visits) / child.visits)
+
+=======
         """Return the best move string for given position."""
         board = chess.Board(fen)
         best_move: Optional[chess.Move] = None
