@@ -1,3 +1,4 @@
+
 """Neural network evaluator for chess positions.
 
 This module provides a small yet functional convolutional neural network
@@ -11,11 +12,15 @@ to keep inference fast on consumer GPUs such as the RTX 3070.  Despite its
 size it includes residual connections and global average pooling which are
 common in modern chess engines.
 """
+=======
+"""Neural network evaluator for chess positions."""
+
 
 from __future__ import annotations
 
 import torch
 import torch.nn as nn
+
 import chess
 
 Tensor = torch.Tensor
@@ -59,6 +64,23 @@ class ConvEvaluator(nn.Module):
     def forward(self, x: Tensor) -> Tensor:  # type: ignore[override]
         out = self.features(x)
         return self.head(out)
+=======
+
+
+class SimpleEvaluator(nn.Module):
+    """A tiny CNN evaluator as a placeholder."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(13, 32, kernel_size=3, padding=1),
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(32 * 8 * 8, 1),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore[override]
+        return self.model(x)
 
 
 class NNEvaluator:
@@ -66,6 +88,7 @@ class NNEvaluator:
 
     def __init__(self, device: str | None = None) -> None:
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+
         self.model = ConvEvaluator().to(self.device)
 
     def board_to_tensor(self, board: chess.Board) -> Tensor:
@@ -91,6 +114,12 @@ class NNEvaluator:
         """Return a scalar evaluation for the given board tensor or board."""
         if isinstance(board_tensor, chess.Board):
             board_tensor = self.board_to_tensor(board_tensor)
+=======
+        self.model = SimpleEvaluator().to(self.device)
+
+    def evaluate(self, board_tensor: torch.Tensor) -> float:
+        """Return a scalar evaluation for the given board tensor."""
+
         with torch.no_grad():
             output = self.model(board_tensor.to(self.device))
         return float(output.item())
@@ -103,8 +132,10 @@ class NNEvaluator:
         """Save model weights."""
         torch.save(self.model.state_dict(), path)
 
+
     def export_onnx(self, path: str) -> None:
         """Export the model to ONNX format."""
         dummy = torch.zeros((1, 13, 8, 8), device=self.device)
         torch.onnx.export(self.model, dummy, path, opset_version=17)
+
 

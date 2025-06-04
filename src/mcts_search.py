@@ -1,3 +1,4 @@
+
 """Monte Carlo Tree Search implementation.
 
 This module provides a lightweight MCTS algorithm that consults the neural
@@ -5,6 +6,7 @@ network evaluator for leaf evaluation. It supports a configurable number of
 iterations and applies a humanity adjustment so the engine can mimic more
 human-like play when desired.
 """
+
 
 from __future__ import annotations
 
@@ -23,6 +25,11 @@ if TYPE_CHECKING:
 @dataclass
 class Node:
     """Tree node used by the MCTS algorithm."""
+
+=======
+=======
+    """Basic tree node for MCTS."""
+
 
     board: chess.Board
     parent: Optional["Node"] = None
@@ -79,7 +86,12 @@ class MCTSSearch:
         return node
 
     def _simulate(self, board: chess.Board, config: "EngineConfig") -> float:
+
         score = self.evaluator.evaluate(board)
+=======
+        tensor = self.board_to_tensor(board)
+        score = self.evaluator.evaluate(tensor)
+
         score = self.adjust_for_humanity(score, config.humanity)
         return score if board.turn == chess.WHITE else -score
 
@@ -98,6 +110,42 @@ class MCTSSearch:
             return float("inf")
         c = 1.4
         return child.value / child.visits + c * sqrt(log(total_visits) / child.visits)
+
+=======
+        """Return the best move string for given position."""
+        board = chess.Board(fen)
+        best_move: Optional[chess.Move] = None
+        best_score = float("-inf")
+        for move in board.legal_moves:
+            board.push(move)
+            tensor = self.board_to_tensor(board)
+            score = self.evaluator.evaluate(tensor)
+            score = self.adjust_for_humanity(score, config.humanity)
+            if score > best_score:
+                best_score = score
+                best_move = move
+            board.pop()
+        return best_move.uci() if best_move else "0000"
+
+    @staticmethod
+    def board_to_tensor(board: chess.Board) -> torch.Tensor:
+        """Convert board to tensor representation."""
+        planes = torch.zeros((13, 8, 8), dtype=torch.float32)
+        piece_map = {
+            chess.PAWN: 0,
+            chess.KNIGHT: 1,
+            chess.BISHOP: 2,
+            chess.ROOK: 3,
+            chess.QUEEN: 4,
+            chess.KING: 5,
+        }
+        for square, piece in board.piece_map().items():
+            idx = piece_map[piece.piece_type] + (0 if piece.color == chess.WHITE else 6)
+            row = chess.square_rank(square)
+            col = chess.square_file(square)
+            planes[idx, row, col] = 1.0
+        planes[12].fill_(1.0 if board.turn == chess.WHITE else 0.0)
+        return planes.unsqueeze(0)
 
     @staticmethod
     def adjust_for_humanity(score: float, humanity: int) -> float:
