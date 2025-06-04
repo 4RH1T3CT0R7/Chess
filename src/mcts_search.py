@@ -17,10 +17,22 @@ from typing import Dict, Optional
 import chess
 import torch
 
-from .nn_evaluator import NNEvaluator
-if TYPE_CHECKING:
-    from .core_engine import EngineConfig
+        moves = self.best_moves(fen, config, n=1)
+        return moves[0][0] if moves else "0000"
 
+    def best_moves(
+        self, fen: str, config: "EngineConfig", n: int = 3
+    ) -> list[tuple[str, float]]:
+        """Return top-N moves with average evaluation."""
+        moves_scores: list[tuple[str, float]] = []
+        for move, child in root.children.items():
+            if child.visits == 0:
+                continue
+            score = child.value / child.visits
+            moves_scores.append((move.uci(), score))
+
+        moves_scores.sort(key=lambda item: item[1], reverse=True)
+        return moves_scores[:n]
 
 @dataclass
 class Node:

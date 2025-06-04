@@ -7,7 +7,7 @@ GUI-based sessions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 
 import chess
 import torch
@@ -33,6 +33,19 @@ class AlphaBetaSearch:
                 best_val = val
                 best_move = move
         return best_move.uci() if best_move else "0000"
+
+    def best_moves(
+        self, board: chess.Board, depth: int, config: "EngineConfig", n: int = 3
+    ) -> list[tuple[str, float]]:
+        """Return top-N moves scored by the search."""
+        scores: list[tuple[str, float]] = []
+        for move in board.legal_moves:
+            board.push(move)
+            val = -self._search(board, depth - 1, float("-inf"), float("inf"), -1, config)
+            board.pop()
+            scores.append((move.uci(), val))
+        scores.sort(key=lambda item: item[1], reverse=True)
+        return scores[:n]
 
     def _search(self, board: chess.Board, depth: int, alpha: float, beta: float, color: int, config: "EngineConfig") -> float:
         if depth == 0 or board.is_game_over():
@@ -75,6 +88,13 @@ class AlphaBetaSearch:
             idx = piece_map[piece.piece_type] + (0 if piece.color == chess.WHITE else 6)
             row = chess.square_rank(square)
             col = chess.square_file(square)
+    def suggest_moves(self, fen: str, n: int = 3) -> list[tuple[str, float]]:
+        """Return top-N moves with evaluation scores."""
+        if self.config.use_mcts:
+            return self.mcts.best_moves(fen, self.config, n=n)
+        board = chess.Board(fen)
+        return self.alpha_beta.best_moves(board, self.config.max_depth, self.config, n=n)
+
             planes[idx, row, col] = 1.0
         planes[12].fill_(1.0 if board.turn == chess.WHITE else 0.0)
         return planes.unsqueeze(0)
